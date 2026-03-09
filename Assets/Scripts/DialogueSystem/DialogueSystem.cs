@@ -5,10 +5,36 @@ using UnityEngine;
 
 namespace Dialogue
 {
-    public delegate void DoDialogueCallback(DialogueCommand cmd);
+    public delegate void OnDialogueCallback(DialogueCommand cmd);
+    public delegate void OnDialogueStartCallback();
+    public delegate void OnDialogueCloseCallback();
 
+    /// <summary>
+    /// This is the main dialogue class.
+    /// It class handles the dialogue queuing and event handlers. 
+    /// 
+    /// This class is a singleton which means that you can access to a static instance.
+    /// </summary>
     public class DialogueSystem : ICollection
     {
+        public static DialogueSystem Instance => s_instance;
+
+        public event OnDialogueCallback OnDialogueEvent;
+        public event OnDialogueStartCallback OnDialogueStartEvent;
+        public event OnDialogueCloseCallback OnDialogueCloseEvent;
+
+        public int Count => m_commands.Count;
+
+        public bool IsSynchronized => false;
+        public object SyncRoot => false;
+
+        public DialogueSettings Settings
+        {
+            get; private set;
+        }
+
+        public DialogueCommand Current => m_currentCmd;
+
         private List<DialogueCommand> m_commands;
         private Queue<DialoguePtr> m_dialogQueue;
         
@@ -16,31 +42,26 @@ namespace Dialogue
 
         private static DialogueSystem s_instance = null;
 
-        public int Count => m_commands.Count;
-
-        public bool IsSynchronized => false;
-        public object SyncRoot => false;
-
-        private DoDialogueCallback m_dialogueCallback;
-
-        public DialogueSystem(DoDialogueCallback callback)
+        public DialogueSystem(DialogueSettings settings)
         {
             if (s_instance != null)
             {
                 Debug.LogError(new Exception("a Dialogue System instance already exists!"));
             }
 
+            Settings = settings;
+
             m_commands = new List<DialogueCommand>();
             m_dialogQueue = new Queue<DialoguePtr>();
             m_currentCmd = null;
-            m_dialogueCallback = callback;
 
             s_instance = this;
         }
 
         /// <summary>
-        /// Poll dialogue commands
+        /// Dialogue polling
         /// </summary>
+        /// <returns>Returns true if it can pool to the next one</returns>
         public bool Poll()
         {
             // when the current dialogue is not finished
@@ -80,7 +101,8 @@ namespace Dialogue
                 }
                 else
                 {
-                    DoCommand(DialogueCommand.Empty);
+                    DoCommand(DialogueCommand.EndOfDialogue);
+                    OnDialogueCloseEvent?.Invoke();
                 }
 
                 return;
@@ -96,7 +118,14 @@ namespace Dialogue
                 return false;
             }
 
-            m_dialogueCallback(cmd);
+            // handle start event
+            if (cmd.IsRoot)
+            {
+                OnDialogueStartEvent?.Invoke();
+            }
+
+            // generic event
+            OnDialogueEvent?.Invoke(cmd);
 
             return true;
         }
@@ -152,6 +181,8 @@ namespace Dialogue
             }
 
             s_instance.m_dialogQueue.Enqueue(ptr);
+
+            // start dialogue
             if (s_instance.m_currentCmd == null)
             {
                 s_instance.Next();

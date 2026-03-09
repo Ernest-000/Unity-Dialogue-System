@@ -17,18 +17,46 @@ namespace Dialogue
 
         public DialogueCommand Next;
 
-        public static DialogueCommand Empty
-        {
-            get
-            {
-                return new DialogueCommand(true);
-            }
-        }
+        public static DialogueCommand Empty => new DialogueCommand(true);
+        public static DialogueCommand EndOfDialogue => new DialogueCommand(DialogueBehavior.EndOfDialogue);
 
-        public DialogueCommand(bool isRoot)
+        public DialogueCommand(bool isRoot=false)
         {
             Text = string.Empty;
             Behavior = DialogueBehavior.None;
+            IsValidated = false;
+            IsRoot = isRoot;
+
+            Actor = null;
+            Next = null;
+        }
+
+        public DialogueCommand(string text, bool isRoot=false)
+        {
+            Text = text;
+            Behavior = DialogueBehavior.None;
+            IsValidated = false;
+            IsRoot = isRoot;
+
+            Actor = null;
+            Next = null;
+        }
+
+        public DialogueCommand(DialogueBehavior behavior, bool isRoot=false)
+        {
+            Text = string.Empty;
+            Behavior = behavior;
+            IsValidated = false;
+            IsRoot = isRoot;
+
+            Actor = null;
+            Next = null;
+        }
+
+        public DialogueCommand(string text, DialogueBehavior behavior, bool isRoot=false)
+        {
+            Text = text;
+            Behavior = behavior;
             IsValidated = false;
             IsRoot = isRoot;
 

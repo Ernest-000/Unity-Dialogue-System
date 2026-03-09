@@ -5,6 +5,11 @@ namespace Dialogue
     [Flags]
     public enum DialogueBehavior
     {
-        None
+        WaitForInput,
+        AutoSkip,
+        EndOfDialogue,
+        
+        // default is wait for input
+        None = WaitForInput,
     }
 }

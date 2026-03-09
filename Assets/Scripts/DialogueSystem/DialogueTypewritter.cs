@@ -1,0 +1,177 @@
+using System;
+using System.Text;
+
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Dialogue
+{
+    public class DialogueTypewritter : MonoBehaviour
+    {
+        [Header("Components")]
+        public CanvasGroup PanelGroup;
+        public Image NextCallToAction;
+
+        [Header("Dynamics")]
+        public TMP_Text DialogueText; 
+        public TMP_Text CharacterNameText;
+
+        public string Text
+        {
+            get => this.ToString();
+            set
+            {
+                DialogueText.SetText(value);
+                m_string = new StringBuilder(value);
+            }
+        }
+
+        public string CharacterName
+        {
+            get => CharacterNameText.text;
+            set => CharacterNameText.SetText(value);
+        }
+
+        public bool IsFinish
+        {
+            get
+            {
+                if(m_command == null)
+                {
+                    return true;
+                }
+
+                return m_characterIndex == m_string.Length && m_string.Equals(m_command.Text);
+            }
+        }
+
+        public bool HasCommand => m_command != null;
+
+        private const double k_MINIMUM_TIME_DELAY = double.Epsilon;
+
+        private StringBuilder m_string;
+        private DialogueCommand m_command;
+
+        private int m_characterIndex;
+        private double m_lastTime;
+
+        void Awake()
+        {
+            // constructor
+            m_string = new StringBuilder();
+        } 
+
+        void Start()
+        {
+            ClearBuffers();
+            ClearComponents();
+            ClearTypewritterCooldowns();
+
+            Hide();
+        }
+
+        void Update()
+        {
+            if (HasCommand)
+            {
+                UpdateTypewritter();
+            }
+
+            UpdateUI();
+        }
+
+        /// <summary>
+        /// Show Dialogue box
+        /// </summary>
+        public void Show()
+        {
+            PanelGroup.alpha = 1.0f;
+        }
+
+        /// <summary>
+        /// Hide Dialogue box
+        /// </summary>
+        public void Hide()
+        {
+            PanelGroup.alpha = 0.0f;
+            
+            ClearBuffers();
+        }
+
+        /// <summary>
+        /// Try to display a new command.
+        /// </summary>
+        /// <param name="command">command</param>
+        /// <returns></returns>
+        public bool TryEnqueueCommand(DialogueCommand command)
+        {
+            if(HasCommand)
+            {
+                return false;
+            }
+
+            m_command = command;
+            return true;
+        }
+
+        private void ClearBuffers()
+        {   
+            m_string.Clear();
+            m_command = null;
+
+            m_characterIndex = 0;
+        }
+
+        private void ClearComponents()
+        {
+            DialogueText.SetText(string.Empty);
+            CharacterNameText.SetText(string.Empty);
+        }
+
+        private void ClearTypewritterCooldowns()
+        {
+            m_lastTime = DialogueSystem.Instance.Settings.CharacterDelay;
+        }
+
+        private void AddStringToBuffers(ReadOnlySpan<char> value)
+        {
+            if (value.IsEmpty)
+            {
+                return;
+            }
+
+            m_string.Append(value[0]);
+
+            DialogueText.text = m_string.ToString();
+        }
+
+        private void UpdateTypewritter()
+        {
+            m_lastTime -= Time.deltaTime;
+ 
+            // cooldown has exceed.
+            if(m_lastTime <= double.Epsilon)
+            {
+                AddStringToBuffers(m_command.Text.Substring(m_characterIndex++));
+                ClearTypewritterCooldowns();
+            }
+
+            if (IsFinish)
+            {
+                ClearBuffers();
+                ClearTypewritterCooldowns();
+            }
+        }
+
+        private void UpdateUI()
+        {
+            NextCallToAction.SetTransparency(Convert.ToSingle(IsFinish));
+        }
+
+        public override string ToString()
+        {
+            return m_string.ToString();
+        }
+    }
+}

@@ -7,6 +7,7 @@ namespace Dialogue
     [CreateAssetMenu(fileName = "Dialogue Table", menuName = "Dialogue/Dialogue Table")]
     public class DialogueTable : ScriptableObject
     {
+        public string Name;
         public DialogueTableEntry[] Entries;
 
         [Serializable]
@@ -27,6 +28,7 @@ namespace Dialogue
             }
 
             DialogueCommand root = new DialogueCommand(true);
+            root.RootName = Name;
             root.Text = Entries[0].Text;
             root.Actor = Entries[0].Actor;
             root.Behavior = Entries[0].Behavior;
@@ -36,14 +38,23 @@ namespace Dialogue
                 return root;
             }
 
+            DialogueTableEntry entry;
             DialogueCommand current = root;
             for (int i = 0; i < Entries.Length - 1; i++)
             {
-                current.Add(Entries[i + 1].Text, Entries[i + 1].Actor, Entries[i + 1].Behavior);
+                entry = Entries[i + 1];
+
+                current.Add(entry.Text);
+                current.RootName = Name;
+                current.Behavior = entry.Behavior;
+                current.Actor = entry.Actor;
+                
                 current = current.Next;
             }
 
             return root;
         }
+
+        public static implicit operator DialogueCommand(DialogueTable table) => table.ToCommands();
     }
 }

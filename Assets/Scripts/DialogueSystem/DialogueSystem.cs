@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+
+using System.Linq;
+
 using UnityEngine;
 
 namespace Dialogue
@@ -111,6 +114,13 @@ namespace Dialogue
             m_currentCmd.IsValidated = true;
         }
 
+        public DialoguePtr Find(string name)
+        {
+            int index = m_commands.FindIndex(cmd => cmd.RootName == name);
+            // check for invalid index?
+            return new DialoguePtr(index);
+        }
+
         private bool DoCommand(DialogueCommand cmd)
         { 
             if(!(cmd.IsRoot || cmd.IsValidated))
@@ -160,7 +170,18 @@ namespace Dialogue
             if(s_instance == null)
             {
                 Debug.LogError(new Exception("no instance exists!"));
-                return new DialoguePtr(-1);
+                return DialoguePtr.k_INVALID;
+            }
+
+            if(command == null)
+            {
+                return DialoguePtr.k_INVALID;
+            }
+
+            // if is already registered
+            if (s_instance.m_commands.Contains(command))
+            {
+                return new DialoguePtr(s_instance.m_commands.IndexOf(command));
             }
 
             s_instance.m_commands.Add(command);
@@ -178,6 +199,11 @@ namespace Dialogue
             {
                 Debug.LogError(new Exception("no instance exists!"));
                 return false;
+            }
+
+            if (!DialoguePtr.IsValid(ptr))
+            {
+                Debug.Log(new ArgumentException("invalid dialogue pointer", nameof(ptr)));
             }
 
             s_instance.m_dialogQueue.Enqueue(ptr);

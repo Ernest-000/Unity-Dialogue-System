@@ -7,6 +7,8 @@ namespace Dialogue
 {
     public class DialogueCommand
     {
+        public string RootName;
+
         public string Text;
         public DialogueActor Actor;
 
@@ -22,6 +24,7 @@ namespace Dialogue
 
         public DialogueCommand(bool isRoot=false)
         {
+            RootName = string.Empty;
             Text = string.Empty;
             Behavior = DialogueBehavior.None;
             IsValidated = false;
@@ -62,6 +65,12 @@ namespace Dialogue
 
             Actor = null;
             Next = null;
+        }
+
+        public void Add(string text)
+        {
+            Next = new DialogueCommand(false);
+            Next.Text = text;
         }
 
         public void Add(string text, DialogueActor actor, DialogueBehavior behavior)

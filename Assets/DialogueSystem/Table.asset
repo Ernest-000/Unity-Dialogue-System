@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2167f615945d8c971b26f71484fb9f31, type: 3}
   m_Name: Table
   m_EditorClassIdentifier: Assembly-CSharp::Dialogue.DialogueTable
+  Name: FirstDialogue
   Entries:
   - Actor: {fileID: 11400000, guid: bbfb9a7d1baed1837ae043f229a9db6e, type: 2}
     Text: Haiii this is the first dialogue

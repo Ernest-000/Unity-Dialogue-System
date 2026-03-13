@@ -12,6 +12,9 @@ namespace Dialogue
         [Header("Components")]
         public DialogueTypewritter Typewritter;
 
+        [Header("Tables")]
+        public DialogueTable[] RegisteredTables;
+
         private DialogueSystem m_system;
 
         private InputAction m_inputNext;
@@ -30,6 +33,12 @@ namespace Dialogue
             m_system.OnDialogueStartEvent += Typewritter.Show;
             m_system.OnDialogueCloseEvent += Typewritter.Hide;
 
+            // register tables
+            foreach (DialogueTable table in RegisteredTables)
+            {
+                DialogueSystem.RegisterDialogue(table);
+            }
+
         }
 
         // Update is called once per frame
@@ -41,6 +50,29 @@ namespace Dialogue
 
                 UpdateHandleSkipping(m_system.Current, canPoll);
             }
+        }
+
+        public void PlayDialogue(DialoguePtr ptr) => DialogueSystem.PlayDialogue(ptr);
+        public void PlayDialogue(int index) => DialogueSystem.PlayDialogue(new DialoguePtr(index));
+        public void PlayDialogue(string str) => DialogueSystem.PlayDialogue(PlayDialogueString(str));
+
+        public DialoguePtr PlayDialogueCommand(DialogueCommand cmd)
+        {
+            DialoguePtr ptr = DialogueSystem.RegisterDialogue(cmd);
+            DialogueSystem.PlayDialogue(ptr);
+            return ptr;
+        }
+
+        public DialoguePtr PlayDialogueString(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return DialoguePtr.k_INVALID;
+            }
+
+            DialoguePtr ptr = m_system.Find(name);
+            DialogueSystem.PlayDialogue(ptr);
+            return ptr;    
         }
 
         void OnEnable()

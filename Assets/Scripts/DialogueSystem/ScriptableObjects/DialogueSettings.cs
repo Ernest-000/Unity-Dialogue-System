@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     [Serializable]
     [CreateAssetMenu(fileName = "Dialogue Settings", menuName = "Dialogue/Dialogue Settings")]
@@ -18,6 +18,9 @@ namespace Dialogue
 
         [Header("Inputs")]
         public InputActionReference InputActionNext;
+        public float InputNextCooldown = 0.5f; 
+
         public InputActionReference InputActionSkip;
+        public float InputSkipCooldown = 0.5f; 
     }
 }

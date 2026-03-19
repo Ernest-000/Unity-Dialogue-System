@@ -1,7 +1,8 @@
 using System;
+
 using UnityEngine;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     [Serializable]
     [CreateAssetMenu(fileName = "Dialogue Table", menuName = "Dialogue/Dialogue Table")]
@@ -20,6 +21,10 @@ namespace Dialogue
             public DialogueBehavior Behavior;
         }
 
+        /// <summary>
+        /// Process the entry array and convert it into a command linked list.
+        /// </summary>
+        /// <returns></returns>
         public DialogueCommand ToCommands()
         {
             if(Entries.Length == 0)
@@ -27,29 +32,12 @@ namespace Dialogue
                 return null;
             }
 
-            DialogueCommand root = new DialogueCommand(true);
-            root.RootName = Name;
-            root.Text = Entries[0].Text;
-            root.Actor = Entries[0].Actor;
-            root.Behavior = Entries[0].Behavior;
-
-            if(Entries.Length == 1)
+            DialogueCommand root = DialogueCommand.CreateRoot(Name, Entries[0]);
+            DialogueCommand next = root;
+            for (int i = 1; i < Entries.Length; i++)
             {
-                return root;
-            }
-
-            DialogueTableEntry entry;
-            DialogueCommand current = root;
-            for (int i = 0; i < Entries.Length - 1; i++)
-            {
-                entry = Entries[i + 1];
-
-                current.Add(entry.Text);
-                current.RootName = Name;
-                current.Behavior = entry.Behavior;
-                current.Actor = entry.Actor;
-                
-                current = current.Next;
+                next.AddChild(Entries[i]);
+                next = next.Next;
             }
 
             return root;

@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     public class DialogueTypewritter : MonoBehaviour
     {
@@ -42,7 +42,7 @@ namespace Dialogue
                     return true;
                 }
 
-                return m_characterIndex == m_string.Length && m_string.Equals(m_command.Text);
+                return m_characterIndex == m_command.Text.Length;
             }
         }
 
@@ -63,7 +63,7 @@ namespace Dialogue
         } 
 
         void Start()
-        {
+        {  
             ClearBuffers();
             ClearComponents();
             ClearTypewritterCooldowns();
@@ -97,6 +97,7 @@ namespace Dialogue
             PanelGroup.alpha = 0.0f;
             
             ClearBuffers();
+            ClearComponents();
         }
 
         /// <summary>
@@ -131,7 +132,7 @@ namespace Dialogue
 
         private void ClearTypewritterCooldowns()
         {
-            m_lastTime = DialogueSystem.Instance.Settings.CharacterDelay;
+            m_lastTime = Dialogue.Instance.Settings.CharacterDelay;
         }
 
         private void AddStringToBuffers(ReadOnlySpan<char> value)

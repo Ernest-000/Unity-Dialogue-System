@@ -2,8 +2,9 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace Dialogue
+namespace DialogueSystem
 {
+    [AddComponentMenu("UI (Canvas)/Dialogue System Behaviour")]
     public class DialogueSystemBehaviour : MonoBehaviour
     {
         [Header("Behaviour")]
@@ -15,10 +16,18 @@ namespace Dialogue
         [Header("Tables")]
         public DialogueTable[] RegisteredTables;
 
-        private DialogueSystem m_system;
+        public Dialogue System => m_system;
+
+        private Dialogue m_system;
 
         private InputAction m_inputNext;
         private InputAction m_inputSkip;
+
+        private float k_NEXT_COOLDOWN;
+        private float k_SKIP_COOLDOWN;
+
+        private float m_nextCooldown = 0.0f;
+        private float m_skipCooldown = 0.0f;
 
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Awake()
@@ -26,7 +35,10 @@ namespace Dialogue
             if(Settings == null) Debug.LogError(new ArgumentNullException(nameof(Settings)));
             if(Typewritter == null) Debug.LogError(new ArgumentNullException(nameof(Typewritter)));
 
-            m_system = new DialogueSystem(Settings);
+            m_system = new Dialogue(Settings);
+
+            k_NEXT_COOLDOWN = Settings.InputNextCooldown;
+            k_SKIP_COOLDOWN = Settings.InputSkipCooldown;
 
             // register event
             m_system.OnDialogueEvent += DoDialogue;
@@ -36,7 +48,7 @@ namespace Dialogue
             // register tables
             foreach (DialogueTable table in RegisteredTables)
             {
-                DialogueSystem.RegisterDialogue(table);
+                Dialogue.RegisterDialogue(table);
             }
 
         }
@@ -46,33 +58,10 @@ namespace Dialogue
         {
             if (Typewritter.IsFinish)
             {
-                bool canPoll = m_system.Poll();
+                m_system.Poll();
 
-                UpdateHandleSkipping(m_system.Current, canPoll);
-            }
-        }
-
-        public void PlayDialogue(DialoguePtr ptr) => DialogueSystem.PlayDialogue(ptr);
-        public void PlayDialogue(int index) => DialogueSystem.PlayDialogue(new DialoguePtr(index));
-        public void PlayDialogue(string str) => DialogueSystem.PlayDialogue(PlayDialogueString(str));
-
-        public DialoguePtr PlayDialogueCommand(DialogueCommand cmd)
-        {
-            DialoguePtr ptr = DialogueSystem.RegisterDialogue(cmd);
-            DialogueSystem.PlayDialogue(ptr);
-            return ptr;
-        }
-
-        public DialoguePtr PlayDialogueString(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return DialoguePtr.k_INVALID;
-            }
-
-            DialoguePtr ptr = m_system.Find(name);
-            DialogueSystem.PlayDialogue(ptr);
-            return ptr;    
+                UpdateHandleInputs(m_system.Current);
+            } 
         }
 
         void OnEnable()
@@ -91,6 +80,41 @@ namespace Dialogue
             m_inputSkip.Disable();
         }
 
+        public void PlayDialogue(DialoguePtr ptr) => Dialogue.PlayDialogue(ptr);
+        public void PlayDialogue(int index) => Dialogue.PlayDialogue(new DialoguePtr(index));
+        public void PlayDialogue(string str) => Dialogue.PlayDialogue(PlayDialogueString(str));
+
+        public DialoguePtr PlayDialogueCommand(DialogueCommand cmd)
+        {
+            DialoguePtr ptr = Dialogue.RegisterDialogue(cmd);
+            Dialogue.PlayDialogue(ptr);
+            return ptr;
+        }
+
+        public DialoguePtr PlayDialogueString(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return DialoguePtr.k_INVALID;
+            }
+
+            DialoguePtr ptr = m_system.Find(name);
+
+            if (!DialoguePtr.IsValid(ptr))
+            {
+                Debug.Log($"invalid dialogue name '{name}'");
+                return ptr;
+            }
+
+            Dialogue.PlayDialogue(ptr);
+            return ptr;    
+        }
+
+        public DialogueCommand GetCurrentCommand()
+        {
+            return m_system.Current;
+        }
+
         private void DoDialogue(DialogueCommand cmd)
         {
             if(cmd.Behavior.HasFlag(DialogueBehavior.EndOfDialogue))
@@ -106,25 +130,40 @@ namespace Dialogue
             Typewritter.TryEnqueueCommand(cmd);
         }
 
-        private void UpdateHandleSkipping(DialogueCommand cmd, bool canPoll)
+        private void UpdateHandleInputs(DialogueCommand cmd)
         {
-            DialogueBehavior behaviour = Settings.EndDialogueBehaviour;
-
-            if(cmd != null)
+            // input cooldown
+            if(m_nextCooldown > Mathf.Epsilon)
             {
-                behaviour = cmd.Behavior;
+                m_nextCooldown -= Time.deltaTime;
+                return;
+            }
+            
+            if(cmd == null)
+            {
+                return;
             }
 
-            if (behaviour.HasFlag(DialogueBehavior.AutoSkip))
+            if(cmd.State != DialogueState.Visible)
             {
-                m_system.Next();
+                return;
             }
 
-            if (behaviour.HasFlag(DialogueBehavior.WaitForInput))
+            if (cmd.Behavior.HasFlag(DialogueBehavior.AutoSkip))
             {
-                if (m_inputNext.ReadValue<float>() > float.Epsilon)
+                //m_system.Next();
+                //m_system.MoveNext();
+            }
+
+            if (cmd.Behavior.HasFlag(DialogueBehavior.WaitForInput))
+            {
+                // when input pressed
+                if (m_inputNext.ReadValue<float>() > 0.5f)
                 {
-                    m_system.Next();
+                    m_system.MoveNext();
+                    m_nextCooldown = k_NEXT_COOLDOWN;
+
+                    //m_system.Next();
                 } 
             }
         }

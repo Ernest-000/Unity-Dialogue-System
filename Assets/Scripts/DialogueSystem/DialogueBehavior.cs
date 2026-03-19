@@ -1,6 +1,6 @@
 using System;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     [Flags]
     public enum DialogueBehavior

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     public class DialogueSource : MonoBehaviour
     {
@@ -10,7 +10,12 @@ namespace Dialogue
 
         void Start()
         {
-            m_ptr = DialogueSystem.RegisterDialogue(Dialogue);
+            m_ptr = DialogueSystem.Dialogue.RegisterDialogue(Dialogue);
+        }
+
+        public void PlayDialogue()
+        {
+            DialogueSystem.Dialogue.PlayDialogue(m_ptr);
         }
     }    
 }

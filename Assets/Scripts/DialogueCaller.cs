@@ -1,9 +1,14 @@
 using System;
-using Dialogue;
+using DialogueSystem;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// This is a sample script that show how to call a dialogue sequence. 
+/// </summary> <summary>
+/// 
+/// </summary>
 public class DialogueCaller : MonoBehaviour 
 {
     public DialogueTable Table;
@@ -15,7 +20,7 @@ public class DialogueCaller : MonoBehaviour
 
     public void Start()
     {
-        m_diag = DialogueSystem.RegisterDialogue(Table.ToCommands());
+        m_diag = Dialogue.RegisterDialogue(Table.ToCommands());
         
     }
 
@@ -33,7 +38,7 @@ public class DialogueCaller : MonoBehaviour
     public void Update()
     {
         if (m_input.ReadValue<float>() > float.Epsilon){
-            DialogueSystem.PlayDialogue(m_diag);
+            Dialogue.PlayDialogue(m_diag);
         }
     }
 }

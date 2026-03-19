@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     [Serializable]
     [CreateAssetMenu(fileName = "Dialogue Actor", menuName = "Dialogue/Dialogue Actor")]

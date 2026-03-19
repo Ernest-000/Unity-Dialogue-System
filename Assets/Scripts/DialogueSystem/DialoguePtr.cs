@@ -1,4 +1,4 @@
-namespace Dialogue
+namespace DialogueSystem
 {
     public struct DialoguePtr
     {

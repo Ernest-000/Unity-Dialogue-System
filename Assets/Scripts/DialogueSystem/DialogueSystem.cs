@@ -2,11 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-using System.Linq;
-
 using UnityEngine;
 
-namespace Dialogue
+namespace DialogueSystem
 {
     public delegate void OnDialogueCallback(DialogueCommand cmd);
     public delegate void OnDialogueStartCallback();
@@ -18,34 +16,42 @@ namespace Dialogue
     /// 
     /// This class is a singleton which means that you can access to a static instance.
     /// </summary>
-    public class DialogueSystem : ICollection
+    public class Dialogue : IEnumerator<DialogueCommand>, IEnumerable<DialoguePtr>
     {
-        public static DialogueSystem Instance => s_instance;
+        public static Dialogue Instance => s_instance;
 
         public event OnDialogueCallback OnDialogueEvent;
         public event OnDialogueStartCallback OnDialogueStartEvent;
         public event OnDialogueCloseCallback OnDialogueCloseEvent;
-
-        public int Count => m_commands.Count;
-
-        public bool IsSynchronized => false;
-        public object SyncRoot => false;
 
         public DialogueSettings Settings
         {
             get; private set;
         }
 
-        public DialogueCommand Current => m_currentCmd;
+        public DialogueCommand Current
+        {
+            get => m_current;
+            private set => m_current = value;
+        }
 
-        private List<DialogueCommand> m_commands;
-        private Queue<DialoguePtr> m_dialogQueue;
+        public bool HasCommand => m_current != null;
+
+        public DialogueCommand[] Commands
+        {
+            get => m_registerdCommands.ToArray();
+        }
+
+        object IEnumerator.Current => Current;
+
+        private static Dialogue s_instance = null;
+
+        private List<DialogueCommand> m_registerdCommands;
+        private Queue<DialoguePtr> m_dialogueQueue;
         
-        private DialogueCommand m_currentCmd; 
+        private DialogueCommand m_current; 
 
-        private static DialogueSystem s_instance = null;
-
-        public DialogueSystem(DialogueSettings settings)
+        public Dialogue(DialogueSettings settings)
         {
             if (s_instance != null)
             {
@@ -54,110 +60,131 @@ namespace Dialogue
 
             Settings = settings;
 
-            m_commands = new List<DialogueCommand>();
-            m_dialogQueue = new Queue<DialoguePtr>();
-            m_currentCmd = null;
+            m_registerdCommands = new List<DialogueCommand>();
+            m_dialogueQueue = new Queue<DialoguePtr>();
+            m_current = null;
 
             s_instance = this;
         }
 
         /// <summary>
-        /// Dialogue polling
+        /// Dialogue polling. Called on every update.
         /// </summary>
         /// <returns>Returns true if it can pool to the next one</returns>
-        public bool Poll()
+        public void Poll()
         {
-            // when the current dialogue is not finished
-            if (!CanPoll())
+            if (!HasCommand)
+            {
+                TryDequeueNextCommand();
+                return;
+            }
+
+            DoCommand();
+        }
+
+        /// <summary> 
+        /// Validate the dialogue and go to the next one.
+        /// </summary>
+        public bool MoveNext()
+        {
+            if (!HasCommand)
             {
                 return false;
             }
 
-            // iterate through each command in the linked command list
-            if (DoCommand(m_currentCmd))
-            {
-                m_currentCmd.IsValidated = false;
-                m_currentCmd = m_currentCmd.Next;
-            }
+            m_current.ProcessCommand(DialogueState.Finished);
 
             return true;
         }
- 
+
         /// <summary>
-        /// Validate the dialogue and go to the next one.
+        /// Remove all queued dialogues
         /// </summary>
-        public void Next()
+        public void Reset()
         {
-            if(m_currentCmd == null)
-            {
-                // when there is no dialogue after
-                // we can dequeue the next one
-                if(m_dialogQueue.TryDequeue(out DialoguePtr dialoguePtr))
-                {
-                    if(dialoguePtr == -1)
-                    {
-                        Debug.Log("failed to call dialogue");
-                        return;
-                    }
-
-                    m_currentCmd = m_commands[dialoguePtr];
-                }
-                else
-                {
-                    DoCommand(DialogueCommand.EndOfDialogue);
-                    OnDialogueCloseEvent?.Invoke();
-                }
-
-                return;
-            }
-
-            m_currentCmd.IsValidated = true;
+            m_dialogueQueue.Clear();
+            Current = null;
         }
 
+        /// <summary>
+        /// Find a dialogue ptr by using a name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
         public DialoguePtr Find(string name)
         {
-            int index = m_commands.FindIndex(cmd => cmd.RootName == name);
+            int index = m_registerdCommands.FindIndex(cmd => cmd.Name == name);
+
             // check for invalid index?
             return new DialoguePtr(index);
         }
 
-        private bool DoCommand(DialogueCommand cmd)
-        { 
-            if(!(cmd.IsRoot || cmd.IsValidated))
+        private void DoCommand()
+        {
+            switch (m_current.State)
+            {
+                case DialogueState.Hidden:
+                    OnDialogueStartEvent?.Invoke();
+                    m_current.ProcessCommand(DialogueState.Typing);
+                    break;
+                
+                case DialogueState.Typing:
+                    OnDialogueEvent?.Invoke(m_current);
+                    m_current.ProcessCommand(DialogueState.Visible);
+                    break;
+                
+                case DialogueState.Finished:
+                    m_current.ProcessCommand(DialogueState.Hidden);
+                    m_current = m_current.Next;
+
+                    if(m_current == null)
+                    {
+                        OnDialogueCloseEvent?.Invoke();
+                        break;
+                    }
+
+                    break;
+
+                default: break;
+            }
+        }
+
+        private bool TryDequeueNextCommand()
+        {
+            // avoid more dequeues
+            if(HasCommand)
             {
                 return false;
             }
 
-            // handle start event
-            if (cmd.IsRoot)
+            // dequeue
+            if(m_dialogueQueue.TryDequeue(out DialoguePtr ptr))
             {
-                OnDialogueStartEvent?.Invoke();
+                m_current = m_registerdCommands[ptr];
+                m_current.ProcessCommand(DialogueState.Hidden);
+
+                return true;
             }
 
-            // generic event
-            OnDialogueEvent?.Invoke(cmd);
-
-            return true;
+            return false;
         }
 
-        private bool CanPoll()
+        public IEnumerator<DialoguePtr> GetEnumerator()
         {
-            if(m_currentCmd == null)
-            {
-                return false;
-            }
-
-            return true;
+            return m_dialogueQueue.GetEnumerator();
         }
 
-        public void CopyTo(Array array, int index)
+        IEnumerator IEnumerable.GetEnumerator()
         {
-            Array.Copy(m_commands.ToArray(), index, array, index, Count - index);
+            return GetEnumerator();
         }
 
-        public IEnumerator GetEnumerator()
+        public void Dispose()
         {
-            return m_commands.GetEnumerator();
+            Reset();
+
+            m_registerdCommands.Clear();
+            s_instance = null;
         }
 
         /// <summary>
@@ -175,17 +202,39 @@ namespace Dialogue
 
             if(command == null)
             {
+                Debug.LogError(new ArgumentException("invalid dialogue command", nameof(command)));
                 return DialoguePtr.k_INVALID;
             }
 
             // if is already registered
-            if (s_instance.m_commands.Contains(command))
+            if (s_instance.m_registerdCommands.Contains(command))
             {
-                return new DialoguePtr(s_instance.m_commands.IndexOf(command));
+                return new DialoguePtr(s_instance.m_registerdCommands.IndexOf(command));
             }
 
-            s_instance.m_commands.Add(command);
-            return new DialoguePtr(s_instance.m_commands.Count - 1);
+            s_instance.m_registerdCommands.Add(command);
+            return new DialoguePtr(s_instance.m_registerdCommands.Count - 1);
+        }
+
+        /// <summary>
+        /// Remove and clear a registered dialogue pointer
+        /// </summary>
+        /// <param name="ptr"></param>
+        public static void DestroyDialogue(DialoguePtr ptr)
+        {
+            if(s_instance == null)
+            {
+                Debug.LogError(new Exception("no instance exists!"));
+                return;
+            }
+
+            if (!DialoguePtr.IsValid(ptr))
+            {
+                Debug.LogError(new ArgumentException("invalid dialogue pointer", nameof(ptr)));
+            }
+
+            s_instance.m_registerdCommands[ptr].Clear();
+            s_instance.m_registerdCommands.RemoveAt(ptr);
         }
 
         /// <summary>
@@ -203,15 +252,13 @@ namespace Dialogue
 
             if (!DialoguePtr.IsValid(ptr))
             {
-                Debug.Log(new ArgumentException("invalid dialogue pointer", nameof(ptr)));
+                Debug.LogError(new ArgumentException("invalid dialogue pointer", nameof(ptr)));
             }
 
-            s_instance.m_dialogQueue.Enqueue(ptr);
-
-            // start dialogue
-            if (s_instance.m_currentCmd == null)
+            // enqueue the dialogue pointer
+            if (!s_instance.m_dialogueQueue.Contains(ptr))
             {
-                s_instance.Next();
+                s_instance.m_dialogueQueue.Enqueue(ptr);
             }
 
             return true;

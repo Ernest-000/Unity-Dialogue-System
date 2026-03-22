@@ -12,6 +12,7 @@ namespace DialogueSystem
         [Header("Typewritter")]
         [Range(0.0f, 1.0f)]
         public float CharacterDelay;
+        public SerializableDictionary<char, float> DelayHashmap;
 
         [Header("Behaviour")]
         public DialogueBehavior EndDialogueBehaviour;

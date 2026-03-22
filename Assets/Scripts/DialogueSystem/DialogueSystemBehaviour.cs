@@ -39,6 +39,8 @@ namespace DialogueSystem
 
             k_NEXT_COOLDOWN = Settings.InputNextCooldown;
             k_SKIP_COOLDOWN = Settings.InputSkipCooldown;
+            m_nextCooldown = k_NEXT_COOLDOWN;
+            m_skipCooldown = k_SKIP_COOLDOWN;
 
             // register event
             m_system.OnDialogueEvent += DoDialogue;
@@ -60,8 +62,10 @@ namespace DialogueSystem
             {
                 m_system.Poll();
 
-                UpdateHandleInputs(m_system.Current);
+                UpdateHandleNext(m_system.Current);
             } 
+
+            UpdateHandleSkipping(m_system.Current);
         }
 
         void OnEnable()
@@ -130,7 +134,7 @@ namespace DialogueSystem
             Typewritter.TryEnqueueCommand(cmd);
         }
 
-        private void UpdateHandleInputs(DialogueCommand cmd)
+        private void UpdateHandleNext(DialogueCommand cmd)
         {
             // input cooldown
             if(m_nextCooldown > Mathf.Epsilon)
@@ -165,6 +169,26 @@ namespace DialogueSystem
 
                     //m_system.Next();
                 } 
+            }
+        }
+
+        private void UpdateHandleSkipping(DialogueCommand cmd)
+        {
+            if(m_skipCooldown > Mathf.Epsilon)
+            {
+                m_skipCooldown -= Time.deltaTime;
+                return;
+            }
+
+            if(cmd == null)
+            {
+                return;
+            }
+
+            if(m_inputSkip.ReadValue<float>() > 0.5f)
+            {
+                Typewritter.Reveal();
+                m_skipCooldown = k_SKIP_COOLDOWN;
             }
         }
     }

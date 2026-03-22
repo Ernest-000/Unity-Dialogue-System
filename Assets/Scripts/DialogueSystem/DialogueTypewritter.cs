@@ -54,6 +54,7 @@ namespace DialogueSystem
         private DialogueCommand m_command;
 
         private int m_characterIndex;
+        private char m_lastCharacter;
         private double m_lastTime;
 
         void Awake()
@@ -116,6 +117,16 @@ namespace DialogueSystem
             return true;
         }
 
+        public void Reveal()
+        {
+            if (!HasCommand)
+            {
+                return;
+            }
+
+            AddStringToBuffers(m_command.Text.Substring(m_characterIndex), m_command.Text.Length - m_characterIndex);
+        }
+
         private void ClearBuffers()
         {   
             m_string.Clear();
@@ -132,17 +143,26 @@ namespace DialogueSystem
 
         private void ClearTypewritterCooldowns()
         {
-            m_lastTime = Dialogue.Instance.Settings.CharacterDelay;
+            if (HasCommand && Dialogue.Instance.Settings.DelayHashmap.TryGetValue(m_lastCharacter, out float delay))
+            {
+                m_lastTime = delay;
+            }
+            else
+            {
+                m_lastTime = Dialogue.Instance.Settings.CharacterDelay;
+            }
         }
 
-        private void AddStringToBuffers(ReadOnlySpan<char> value)
+        private void AddStringToBuffers(ReadOnlySpan<char> value, int length)
         {
             if (value.IsEmpty)
             {
                 return;
             }
 
-            m_string.Append(value[0]);
+            m_string.Append(value.Slice(0, length));
+            m_lastCharacter = value[0]; 
+            m_characterIndex += length;
 
             DialogueText.text = m_string.ToString();
         }
@@ -154,7 +174,7 @@ namespace DialogueSystem
             // cooldown has exceed.
             if(m_lastTime <= double.Epsilon)
             {
-                AddStringToBuffers(m_command.Text.Substring(m_characterIndex++));
+                AddStringToBuffers(m_command.Text.Substring(m_characterIndex), 1);
                 ClearTypewritterCooldowns();
             }
 

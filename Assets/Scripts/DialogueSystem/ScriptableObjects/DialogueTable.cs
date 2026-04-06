@@ -1,4 +1,9 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.Callbacks;
 
 using UnityEngine;
 
@@ -6,43 +11,114 @@ namespace DialogueSystem
 {
     [Serializable]
     [CreateAssetMenu(fileName = "Dialogue Table", menuName = "Dialogue/Dialogue Table")]
-    public class DialogueTable : ScriptableObject
+    public class DialogueTable : ScriptableObject, IEnumerable<DialogueCommand>
     {
-        public string Name;
-        public DialogueTableEntry[] Entries;
+        public DialogueCommand Root => m_root;
 
-        [Serializable]
-        public class DialogueTableEntry
+        public DialogueCommand Last
         {
-            public DialogueActor Actor;
+            get
+            {
+                DialogueCommand cmd = m_root;
+                while(cmd.Next != null)
+                {
+                    cmd = cmd.Next;
+                }
 
-            [TextArea]
-            public string Text;
-            public DialogueBehavior Behavior;
+                return cmd;
+            }
+        }
+        
+        public string Name;
+
+        [SerializeField]
+        private List<DialogueCommand> m_nodes = new();
+        private DialogueCommand m_root;
+
+        public DialogueCommand AddNode(string name)
+        {
+            if(m_nodes.Count == 0)
+            {
+                m_root = new DialogueCommand(name);
+                m_nodes.Add(m_root);
+                return m_root;
+            }
+
+            DialogueCommand cmd = Last.AddChild(name);
+            m_nodes.Add(cmd);
+            return cmd;
+        }
+
+        public DialogueCommand AddNode(DialogueCommand parent, string name)
+        {
+            DialogueCommand cmd = parent.AddChild(name);
+            if (!m_nodes.Contains(cmd))
+            {
+                m_nodes.Add(cmd);            
+            }
+            
+            return cmd;
+        }
+
+        public void RemoveNode(DialogueCommand command)
+        {
+            m_nodes.Remove(command);
+            command.Remove();
         }
 
         /// <summary>
-        /// Process the entry array and convert it into a command linked list.
+        /// PLEASE DO NOT USE IT WITHOUT KNOWING WHAT THIS SHIT DOES
+        /// Try to relink lonely nodes.
         /// </summary>
-        /// <returns></returns>
-        public DialogueCommand ToCommands()
+        public void TryRelink()
         {
-            if(Entries.Length == 0)
+            foreach(DialogueCommand cmd in m_nodes)
             {
-                return null;
-            }
+                int index = m_nodes.IndexOf(cmd);
+                if(index == 0 && !cmd.IsRoot)
+                {
+                    m_root = cmd;
+                    cmd.Parent = cmd;    
+                }
 
-            DialogueCommand root = DialogueCommand.CreateRoot(Name, Entries[0]);
-            DialogueCommand next = root;
-            for (int i = 1; i < Entries.Length; i++)
-            {
-                next.AddChild(Entries[i]);
-                next = next.Next;
+                if(cmd.Parent == null && index != 0)
+                {
+                    cmd.Parent = m_nodes[index - 1];
+                }
             }
-
-            return root;
         }
 
-        public static implicit operator DialogueCommand(DialogueTable table) => table.ToCommands();
+        [OnOpenAsset]
+        public static bool OnOpenEditor(int instance, int line)
+        {
+            DialogueTable table = EditorUtility.EntityIdToObject(instance) as DialogueTable;
+            
+            if(table != null)
+            {
+                DialogueGraphEditor editor = DialogueGraphEditor.CreateWindow();
+                return true;
+            } 
+
+            return false;
+        }
+
+        public IEnumerator<DialogueCommand> GetEnumerator()
+        {
+            List<DialogueCommand> nodes = new();
+
+            DialogueCommand cmd = m_root;
+            while(cmd != null)
+            {
+                nodes.Add(cmd);
+                cmd = cmd.Next;
+            }
+
+            return nodes.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     }
 }

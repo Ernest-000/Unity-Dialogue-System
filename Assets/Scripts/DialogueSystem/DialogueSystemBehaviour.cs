@@ -50,7 +50,7 @@ namespace DialogueSystem
             // register tables
             foreach (DialogueTable table in RegisteredTables)
             {
-                Dialogue.RegisterDialogue(table);
+                Dialogue.RegisterDialogue(table.Root);
             }
 
         }

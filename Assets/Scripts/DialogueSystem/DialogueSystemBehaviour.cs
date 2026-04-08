@@ -50,7 +50,7 @@ namespace DialogueSystem
             // register tables
             foreach (DialogueTable table in RegisteredTables)
             {
-                Dialogue.RegisterDialogue(table.Root);
+                Dialogue.RegisterDialogue(table);
             }
 
         }
@@ -113,6 +113,9 @@ namespace DialogueSystem
             Dialogue.PlayDialogue(ptr);
             return ptr;    
         }
+
+        public void DisplayString(string @string) => Dialogue.DisplayDialogueString(@string);
+        public void DisplayString(string @string, DialogueActor actor) => Dialogue.DisplayDialogueString(@string, actor);
 
         public DialogueCommand GetCurrentCommand()
         {

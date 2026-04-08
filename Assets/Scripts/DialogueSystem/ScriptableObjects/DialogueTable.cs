@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.Callbacks;
 
@@ -29,12 +30,33 @@ namespace DialogueSystem
             }
         }
         
+        [Header("Name")]
         public string Name;
+        
+        [TextArea]
+        [Tooltip("A reminder. Not used in the dialogue system.")]
+        public string Description;
 
+        [Space]
         [SerializeField]
         private List<DialogueCommand> m_nodes = new();
-        private DialogueCommand m_root;
+        private DialogueCommand m_root
+        {
+            get => m_nodes.First();
+            set
+            {
+                if(m_nodes.Count >= 1)
+                {
+                    m_nodes[0] = value;
+                }
+                else
+                {
+                    m_nodes.Add(value);
+                }
+            }
+        }
 
+        public DialogueCommand AddNode() => AddNode(Name);
         public DialogueCommand AddNode(string name)
         {
             if(m_nodes.Count == 0)
@@ -72,19 +94,21 @@ namespace DialogueSystem
         /// </summary>
         public void TryRelink()
         {
-            foreach(DialogueCommand cmd in m_nodes)
+            for(int i = 0; i < m_nodes.Count; i++)
             {
-                int index = m_nodes.IndexOf(cmd);
-                if(index == 0 && !cmd.IsRoot)
+                if(i == 0 && !m_nodes[i].IsRoot)
                 {
-                    m_root = cmd;
-                    cmd.Parent = cmd;    
+                    m_root = m_nodes[i];
+                    m_nodes[i].Parent = m_nodes[i];    
                 }
 
-                if(cmd.Parent == null && index != 0)
+                if(m_nodes[i].Next == null && i < m_nodes.Count - 1)
                 {
-                    cmd.Parent = m_nodes[index - 1];
-                }
+                    m_nodes[i].Next = m_nodes[i + 1];
+                    m_nodes[i + 1].Parent = m_nodes[i];
+                } 
+
+                m_nodes[i].Name = Name;
             }
         }
 
@@ -95,7 +119,7 @@ namespace DialogueSystem
             
             if(table != null)
             {
-                DialogueGraphEditor editor = DialogueGraphEditor.CreateWindow();
+                
                 return true;
             } 
 
@@ -103,6 +127,16 @@ namespace DialogueSystem
         }
 
         public IEnumerator<DialogueCommand> GetEnumerator()
+        {
+            return ToList().GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public DialogueCommand[] ToArray()
         {
             List<DialogueCommand> nodes = new();
 
@@ -113,12 +147,21 @@ namespace DialogueSystem
                 cmd = cmd.Next;
             }
 
-            return nodes.GetEnumerator();
+            return nodes.ToArray();
         }
 
-        IEnumerator IEnumerable.GetEnumerator()
+        public List<DialogueCommand> ToList()
         {
-            return GetEnumerator();
+            List<DialogueCommand> nodes = new();
+
+            DialogueCommand cmd = m_root;
+            while(cmd != null)
+            {
+                nodes.Add(cmd);
+                cmd = cmd.Next;
+            }
+
+            return nodes;
         }
     }
 }

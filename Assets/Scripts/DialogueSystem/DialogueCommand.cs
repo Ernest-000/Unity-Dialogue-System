@@ -14,19 +14,20 @@ namespace DialogueSystem
         public DialogueState State => m_state;
         public string GUID => GetHashCode().ToString();
 
+        [HideInInspector]
         public string Name;
+
+        [TextArea]
         public string Text;
         public DialogueActor Actor;
+        public uint ActorSprite;
 
         public DialogueBehavior Behavior; 
 
         public DialogueCommand Parent;
         public DialogueCommand Next;
 
-        [SerializeField]
-        internal Vector2 p_nodePosition;
-        internal string m_guid;
-
+        private string m_guid;
         private DialogueState m_state;
 
         private DialogueCommand(DialogueCommand parent, DialogueCommand next)
@@ -36,6 +37,7 @@ namespace DialogueSystem
             Behavior = DialogueBehavior.None;
 
             Actor = null;
+            ActorSprite = 0;
 
             Parent = parent;
             Next = next;
@@ -114,8 +116,11 @@ namespace DialogueSystem
         /// </summary>
         public void Clear()
         {
-            Next.Clear();
-            Next = null;
+            if(Next != null)
+            {
+                Next.Clear();
+                Next = null;  
+            }
         }
 
         public IEnumerator<DialogueCommand> GetEnumerator()
